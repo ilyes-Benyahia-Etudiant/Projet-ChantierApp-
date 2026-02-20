@@ -37,6 +37,12 @@ jobs:
     - name: Generate Prisma Client
       run: cd back && npx prisma generate
 
+    - name: Lint Backend
+      run: cd back && npm run lint
+
+    - name: Test Backend (Unit)
+      run: cd back && npm run test
+
     # 5. Compilation du Backend (vérifie s'il y a des erreurs TypeScript)
     - name: Build Backend
       run: cd back && npm run build
@@ -54,6 +60,9 @@ jobs:
     # 7. Installation des dépendances Frontend
     - name: Install Frontend Dependencies
       run: cd front && npm ci
+
+    - name: Lint Frontend
+      run: cd front && npm run lint
 
     # 8. Compilation du Frontend (React/Vite)
     # Vérifie que le code React est valide et peut être compilé pour la production
