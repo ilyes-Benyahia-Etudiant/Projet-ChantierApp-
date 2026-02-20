@@ -1,0 +1,52 @@
+services:
+  backend:
+    build:
+      context: ./back
+      dockerfile: ../devops/docker/backend.Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      - DATABASE_URL=mysql://root:root@db:3306/chantier_facile_bdd
+      - JWT_SECRET=supersecret
+      # Ajoute ici tes autres variables d'environnement si nécessaire
+    depends_on:
+      - db
+    restart: always
+
+  frontend:
+    build:
+      context: .
+      dockerfile: devops/docker/frontend.Dockerfile
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    restart: always
+
+  db:
+    image: mysql:8.0
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: chantier_facile_bdd
+    ports:
+      - "3306:3306"
+    volumes:
+      - db_data:/var/lib/mysql
+    # Nécessaire pour les clients MySQL plus anciens ou certains drivers Node.js
+    command: --default-authentication-plugin=mysql_native_password
+    restart: always
+
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin
+    environment:
+      PMA_HOST: db
+      PMA_PORT: 3306
+      MYSQL_ROOT_PASSWORD: root
+    ports:
+      - "8080:80"
+    depends_on:
+      - db
+    restart: always
+
+volumes:
+  db_data:

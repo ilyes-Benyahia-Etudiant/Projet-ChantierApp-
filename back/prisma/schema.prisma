@@ -1,0 +1,292 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+
+enum Role {
+  customer
+  entreprise
+  admin
+}
+
+enum TaskStatus {
+  pending
+  stopped
+  finished
+  started
+}
+
+enum PaymentType {
+  cash
+  check
+  credit_card
+  bank_transfer
+}
+
+enum InvoiceStatus {
+  to_be_payed
+  payed
+  pending
+  cancelled
+}
+
+
+model User {
+  id           Int           @id @default(autoincrement())
+  email        String        @unique
+  is_validated Boolean       @default(false)
+  role         Role          @default(customer)
+  password     String        
+  created_at   DateTime      @db.Date
+  updated_at   DateTime      @db.Date
+
+  // relations
+  profiles     Profile[]
+  tasks        Task[]        @relation("UserTasks")
+  projectsAsCustomer  Project[] @relation("CustomerProjects")
+  projectsAsEntreprise Project[] @relation("EntrepriseProjects")
+  estimates    Estimate[]
+  notifications UserReceivesNotifications[]
+  refreshTokens        RefreshToken[]
+
+  @@map("user")
+}
+
+model Notification {
+  id         Int      @id @default(autoincrement())
+  title      String
+  body       String
+  created_at DateTime @db.Date
+  updated_at DateTime @db.Date
+
+  // relations
+  receivers  UserReceivesNotifications[]
+
+  @@map("notification")
+}
+
+model UserReceivesNotifications {
+  id              Int           @id @default(autoincrement())
+  notification_id Int
+  user_id         Int
+  is_read         Boolean       @default(false) // déplacé ici (état par utilisateur)
+  updated_at DateTime @db.Date
+  created_at DateTime @db.Date
+
+  // relations
+  notification Notification @relation(fields: [notification_id], references: [id])
+  user         User         @relation(fields: [user_id], references: [id])
+
+  @@index([notification_id])
+  @@index([user_id])
+  @@map("user_receives_notifications")
+}
+
+model Profile {
+  id            Int        @id @default(autoincrement())
+  name          String
+  firstName     String
+  telephone     String?
+  is_newbie     Boolean?   @default(false)
+  raisonSociale String?
+  siret         String?    @unique
+  user_id       Int
+  address_id     Int
+  updated_at DateTime @db.Date
+  created_at DateTime @db.Date
+
+  // relations
+  user    User    @relation(fields: [user_id], references: [id])
+  address  Address  @relation(fields: [address_id], references: [id])
+  skills  ProfileHasProfession[]
+
+  @@index([user_id])
+  @@index([address_id])
+  @@map("profile")
+}
+
+model Address {
+  id             Int       @id @default(autoincrement())
+  address_line_1  String
+  zip_code       String    
+  city           String
+  country        String
+  updated_at DateTime @db.Date
+  created_at DateTime @db.Date
+
+  // relations
+  profiles Profile[]
+  projects Project[]
+
+  @@map("address")
+}
+
+model Project {
+  id            Int      @id @default(autoincrement())
+  title         String
+  description   String
+  start_date    DateTime @db.Date
+  address_id     Int
+  customer_id   Int
+  entreprise_id Int?
+  is_finished   Boolean  @default(false)
+  updated_at DateTime @db.Date
+  created_at DateTime @db.Date
+
+  // relations
+  address      Address @relation(fields: [address_id], references: [id])
+  customer    User   @relation("CustomerProjects", fields: [customer_id], references: [id])
+  entreprise  User?   @relation("EntrepriseProjects", fields: [entreprise_id], references: [id])
+  estimates   Estimate[]
+  tasks       Task[]  // 1→N
+  
+
+  @@index([address_id])
+  @@index([customer_id])
+  @@index([entreprise_id])
+  @@map("project")
+}
+
+model Task {
+  id          Int        @id @default(autoincrement())
+  title       String
+  description String
+  start_date  DateTime   @db.Date
+  end_date    DateTime   @db.Date
+  status      TaskStatus @default(pending)
+  user_id     Int?
+  project_id  Int        // chaque tâche appartient à un projet
+  updated_at DateTime @db.Date
+  created_at DateTime @db.Date
+
+  // relations
+  assignedTo  User?      @relation("UserTasks", fields: [user_id], references: [id])
+  project     Project    @relation(fields: [project_id], references: [id])
+  professions TaskHasProfession[]
+
+  @@index([user_id])
+  @@index([project_id])
+  @@map("task")
+}
+
+model Profession {
+  id              Int    @id @default(autoincrement())
+  profession_name String @unique
+  updated_at DateTime @db.Date
+  created_at DateTime @db.Date
+
+  // relations
+  taskLinks    TaskHasProfession[]
+  profileLinks ProfileHasProfession[]
+
+  @@map("profession")
+}
+
+
+// Tables associatives 
+model TaskHasProfession {
+  id            Int        @id @default(autoincrement())
+  task_id       Int
+  profession_id Int
+  updated_at DateTime @db.Date
+  created_at DateTime @db.Date
+
+  task       Task       @relation(fields: [task_id], references: [id])
+  profession Profession @relation(fields: [profession_id], references: [id])
+
+  @@index([task_id])
+  @@index([profession_id])
+  @@map("task_has_profession")
+}
+
+model ProfileHasProfession {
+  id            Int        @id @default(autoincrement())
+  profile_id    Int
+  profession_id Int
+  updated_at DateTime @db.Date
+  created_at DateTime @db.Date
+
+  profile    Profile    @relation(fields: [profile_id], references: [id])
+  profession Profession @relation(fields: [profession_id], references: [id])
+
+  @@unique([profile_id, profession_id])
+  @@index([profile_id])
+  @@index([profession_id])
+  @@map("profile_has_profession")
+}
+
+
+model Estimate {
+  id                       Int          @id @default(autoincrement())
+  object                   String
+  estimate_number          Int          @unique
+  payment_type             PaymentType  @default(cash)
+  is_validated_by_customer Boolean      @default(false)
+  limit_date               DateTime     @db.Date
+  project_id               Int
+  user_id                  Int
+  updated_at DateTime @db.Date
+  created_at DateTime @db.Date
+
+  // relations
+  project  Project  @relation(fields: [project_id], references: [id])
+  user     User     @relation(fields: [user_id], references: [id])
+  lines    Line[]
+  invoices Invoice[]
+
+  @@index([project_id])
+  @@index([user_id])
+  @@map("estimate")
+}
+
+model Line {
+  id            Int      @id @default(autoincrement())
+  quantity      Int
+  description   String 
+  price_per_qty Decimal  @db.Decimal(10, 2)
+  subtotal      Decimal  @db.Decimal(10, 2)
+  estimate_id   Int
+  updated_at DateTime @db.Date
+  created_at DateTime @db.Date
+
+  // relations
+  estimate Estimate @relation(fields: [estimate_id], references: [id])
+
+  @@index([estimate_id])
+  @@map("line")
+}
+
+model Invoice {
+  id           Int           @id @default(autoincrement())
+  object       String
+  payment_type PaymentType   @default(credit_card)
+  status       InvoiceStatus @default(pending)
+  estimate_id  Int
+  updated_at DateTime @db.Date
+  created_at DateTime @db.Date
+
+  // relations
+  estimate Estimate @relation(fields: [estimate_id], references: [id])
+
+  @@index([estimate_id])
+  @@map("invoice")
+}
+
+model RefreshToken {
+  id         Int      @id @default(autoincrement())
+  token_hash String   @db.VarChar(255)
+  user_id    Int
+  revoked    Boolean  @default(false)
+  expires_at DateTime @db.Date
+  updated_at DateTime @db.Date
+  created_at DateTime @db.Date
+  user       User     @relation(fields: [user_id], references: [id])
+
+  @@index([user_id])
+  @@map("refresh_token")
+}
