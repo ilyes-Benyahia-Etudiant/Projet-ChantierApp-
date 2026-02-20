@@ -19,7 +19,12 @@ import { CreateProjectDto } from './dto/create-project.dto';
 import { UpdateProjectDto } from './dto/update-project.dto';
 import { AddressService } from '../address/address.service';
 import { UserService } from '../user/user.service';
-import { ApiTags, ApiResponse, ApiForbiddenResponse, ApiQuery } from '@nestjs/swagger';
+import {
+  ApiTags,
+  ApiResponse,
+  ApiForbiddenResponse,
+  ApiQuery,
+} from '@nestjs/swagger';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { AuthGuard } from '../auth/guards/auth.guard';
 import { CreateTaskDto } from '../task/dto/create-task.dto';
@@ -100,12 +105,16 @@ export class ProjectController {
     status: 200,
     description: 'Recherche de projets',
   })
-  @ApiQuery({ name: 'status', enum: ['all', 'new', 'accepted', 'finished'], required: false })
+  @ApiQuery({
+    name: 'status',
+    enum: ['all', 'new', 'accepted', 'finished'],
+    required: false,
+  })
   @Roles(userRole.Admin, userRole.Entreprise, userRole.Customer)
   @Get('search')
   async search(
     @Query('status') status: 'all' | 'new' | 'accepted' | 'finished' = 'all',
-    @Req() req: any
+    @Req() req: any,
   ) {
     const userId = req.user.id;
     let where: Prisma.ProjectWhereInput = {};
@@ -118,23 +127,23 @@ export class ProjectController {
         where = { is_finished: false, entreprise_id: userId };
         break;
       case 'finished':
-        where = { 
-            is_finished: true, 
-            OR: [{ entreprise_id: userId }, { customer_id: userId }] 
+        where = {
+          is_finished: true,
+          OR: [{ entreprise_id: userId }, { customer_id: userId }],
         };
         break;
       case 'all':
       default:
-         where = {
-            OR: [
-                { entreprise_id: null, is_finished: false },
-                { entreprise_id: userId },
-                { customer_id: userId }
-            ]
-         };
-         break;
+        where = {
+          OR: [
+            { entreprise_id: null, is_finished: false },
+            { entreprise_id: userId },
+            { customer_id: userId },
+          ],
+        };
+        break;
     }
-    
+
     return this.projectService.findAll({ where });
   }
 
@@ -191,7 +200,7 @@ export class ProjectController {
     if (!project) {
       throw new NotFoundException(`Project avec l'ID ${id} introuvable`);
     }
-    
+
     // Vérifier si le projet est déjà assigné
     if (project.entreprise_id !== null) {
       throw new BadRequestException(`Project déjà assigné à une entreprise`);
@@ -199,7 +208,7 @@ export class ProjectController {
 
     // Vérifier si le projet est terminé
     if (project.is_finished) {
-        throw new BadRequestException(`Project déjà terminé`);
+      throw new BadRequestException(`Project déjà terminé`);
     }
 
     return this.projectService.accept(+id, req.user.id);

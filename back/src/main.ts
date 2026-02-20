@@ -16,7 +16,11 @@ async function bootstrap() {
   app.useGlobalFilters(new HttpExceptionFilter());
   app.enableCors({
     // Autorise localhost:80 (production Docker/Nginx), localhost:5173 (dev vite) et localhost (sans port explicite)
-    origin: ['http://localhost', 'http://localhost:5173', 'http://localhost:80'],
+    origin: [
+      'http://localhost',
+      'http://localhost:5173',
+      'http://localhost:80',
+    ],
     credentials: true,
   });
   // Installe le middleware pour lire les cookies des requêtes
