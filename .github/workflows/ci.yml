@@ -36,6 +36,11 @@ jobs:
     # 4. Génération du client Prisma (nécessaire avant le build)
     - name: Generate Prisma Client
       run: cd back && npx prisma generate
+      env:
+        # Prisma a besoin de DATABASE_URL même pour générer le client (validation du schéma)
+        # On met une valeur fictive car on ne se connecte pas à la vraie DB ici
+        DATABASE_URL: "mysql://user:pass@localhost:3306/db"
+        JWT_SECRET: "secret_pour_le_build"
 
     - name: Lint Backend
       run: cd back && npm run lint
